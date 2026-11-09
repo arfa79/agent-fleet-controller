@@ -84,3 +84,8 @@ The collection gate checks sample counts and classification; it cannot determine
 whether the traces came from real agents. Preserve workload provenance in the
 experiment report and never relabel controlled or synthetic traces as live
 evidence. See [analysis.md](analysis.md) for report semantics.
+
+Wait markers are assertions that the managed sandbox is safely reclaimable.
+Exclude traces whose markers merely describe a blocked harness while sandbox
+work continues; treating those intervals as idle would invalidate both the
+savings model and a future suspension decision.

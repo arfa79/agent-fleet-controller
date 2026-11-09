@@ -20,7 +20,7 @@ class MarkerError(RuntimeError):
 
 
 def emit(kind: EventKind | str) -> None:
-    """Emit one content-free lifecycle marker to the enclosing AFC recorder."""
+    """Emit a content-free, safely reclaimable wait marker to the AFC recorder."""
 
     try:
         parsed = kind if isinstance(kind, EventKind) else EventKind(kind)
@@ -45,7 +45,12 @@ def emit(kind: EventKind | str) -> None:
 
 @contextlib.contextmanager
 def wait(wait_type: str) -> Iterator[None]:
-    """Mark a model, tool, or human wait without recording its contents."""
+    """Mark a safely reclaimable model, tool, or human wait without content.
+
+    The marker asserts that no process inside the managed sandbox must keep
+    running for the enclosed operation to finish. It must not wrap active
+    sandbox work merely because the caller is blocked waiting for that work.
+    """
 
     try:
         started = EventKind(f"{wait_type}_wait_started")

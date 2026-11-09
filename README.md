@@ -84,6 +84,12 @@ with wait("tool"):
     result = call_tool()
 ```
 
+A wait marker is a reclaimability assertion: while it is active, no process in
+the managed sandbox may need to keep running. Do not wrap sandbox creation,
+`sandbox exec`, or any other operation that is still doing work in the sandbox
+merely because the harness is blocked waiting for it. A tool wait is eligible
+only when the tool runs outside the sandbox and the sandbox itself is idle.
+
 An agent that cannot import the SDK may invoke `afc mark model-wait-started`
 and `afc mark model-wait-finished` around the operation. Supported wait types
 are `model`, `tool`, and `human`.
@@ -139,6 +145,9 @@ The [OpenShell integration guide](docs/integrations/openshell.md) describes the
 current observe-only boundary and the evidence required before lifecycle control.
 The [controlled local pilot](docs/results/stage-1-controlled-local.md) records
 the first 30-by-2 functional result and its limitations.
+The [OpenShell smoke result](docs/results/stage-1-openshell-smoke.md) records a
+real OpenShell v0.1.7 control-plane integration and the host-kernel blocker that
+prevented a sandbox benchmark.
 
 ## Safety and project status
 

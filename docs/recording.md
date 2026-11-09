@@ -45,6 +45,13 @@ with wait("model"):
     model_result = model_client.generate()
 ```
 
+Every started wait is an assertion that the managed sandbox is safely idle and
+its resources could be reclaimed without preventing the enclosed operation
+from completing. A blocked harness is not sufficient evidence. For example,
+do not mark an OpenShell sandbox creation or `sandbox exec` call as a wait while
+the sandbox is actively starting or executing. A tool wait is valid only when
+the tool runs outside the sandbox and no sandbox process must continue.
+
 Shell or other runtimes can use the CLI inherited by the recorded process:
 
 ```bash
@@ -91,5 +98,8 @@ metrics must be treated as best effort.
 - Do not use production credentials or customer workloads during Stage 1.
 - Keep the recorded command in the foreground; detached daemons are outside the
   recorder lifecycle.
+- Emit wait markers only at boundaries where the sandbox is safely reclaimable;
+  false wait markers make simulated savings invalid and would be unsafe input
+  to a future lifecycle controller.
 - A hard kill of the recorder may leave a partial trace without a terminal
   event. Validate every trace before simulation.

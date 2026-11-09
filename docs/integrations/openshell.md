@@ -24,6 +24,13 @@ the harness with `agent_fleet_controller.markers.wait`. The harness is the
 authoritative source for semantic wait boundaries; network silence or an open
 connection is not proof that a sandbox is idle.
 
+A marker means the OpenShell sandbox is safely reclaimable, not merely that the
+harness is blocked. Never wrap `openshell sandbox create`, `openshell sandbox
+exec`, or an equivalent API call in a wait marker while work is active in the
+sandbox. A tool wait is valid only when the tool executes outside the sandbox
+and no process inside the sandbox must continue. Model and human waits require
+the same sandbox-idle guarantee.
+
 The recorder's `/proc` metrics describe only the local harness process tree.
 They do not describe a remote OpenShell sandbox. For Docker, Kubernetes, or VM
 backends, consumed-resource evidence must come from the runtime's existing
@@ -47,3 +54,8 @@ the simulator.
 
 The controlled local pilot in this repository tests the recording and analysis
 pipeline only. It is not an OpenShell benchmark.
+
+The first real control-plane smoke test is documented in
+[Stage 1 OpenShell smoke result](../results/stage-1-openshell-smoke.md). It
+validated the observe-only boundary but did not produce sandbox resource-saving
+evidence because the test host did not meet OpenShell's kernel requirements.
