@@ -1,5 +1,7 @@
 # Agent Fleet Controller
 
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
+
 Agent Fleet Controller (AFC) is an evidence-first experiment for coordinating
 agent sandboxes with inference infrastructure. The initial milestone does not
 control a real cluster. It validates whether suspending idle agent sandboxes can
@@ -72,6 +74,10 @@ See [RFC 0001](docs/rfc/0001-agent-fleet-controller.md) and the
 
 This is pre-alpha research software. It must not receive production credentials
 or customer traces. Live suspension, Kubernetes mutation, and inference routing
-are out of scope for the first milestone. Licensing has intentionally not been
-selected yet; choose and document a license before publishing or accepting
-outside contributions.
+are out of scope for the first milestone.
+
+## License
+
+Licensed under the [Apache License 2.0](LICENSE). This permissive license includes
+an explicit patent grant and is compatible with commercial use and with major
+projects in the agent-infrastructure ecosystem that use Apache-2.0.
