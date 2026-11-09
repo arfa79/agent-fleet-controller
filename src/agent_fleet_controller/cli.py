@@ -5,6 +5,7 @@ import json
 import sys
 from pathlib import Path
 
+from .analysis import analyze_paths
 from .generator import generate_trace
 from .markers import MarkerError, emit
 from .recorder import normalized_returncode, record_command
@@ -24,6 +25,17 @@ def _policy_from_args(args: argparse.Namespace) -> SimulationPolicy:
     )
 
 
+def _add_policy_arguments(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--idle-after", type=float, default=30.0)
+    parser.add_argument("--checkpoint-seconds", type=float, default=0.5)
+    parser.add_argument("--resume-seconds", type=float, default=1.5)
+    parser.add_argument("--cpu-hourly", type=float, default=0.0)
+    parser.add_argument("--memory-gib-hourly", type=float, default=0.0)
+    parser.add_argument("--minimum-savings", type=float, default=20.0)
+    parser.add_argument("--maximum-completion-overhead", type=float, default=5.0)
+    parser.add_argument("--pretty", action="store_true")
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="afc")
     subparsers = parser.add_subparsers(dest="action", required=True)
@@ -33,14 +45,15 @@ def build_parser() -> argparse.ArgumentParser:
 
     simulation = subparsers.add_parser("simulate", help="compare baseline and controller")
     simulation.add_argument("trace")
-    simulation.add_argument("--idle-after", type=float, default=30.0)
-    simulation.add_argument("--checkpoint-seconds", type=float, default=0.5)
-    simulation.add_argument("--resume-seconds", type=float, default=1.5)
-    simulation.add_argument("--cpu-hourly", type=float, default=0.0)
-    simulation.add_argument("--memory-gib-hourly", type=float, default=0.0)
-    simulation.add_argument("--minimum-savings", type=float, default=20.0)
-    simulation.add_argument("--maximum-completion-overhead", type=float, default=5.0)
-    simulation.add_argument("--pretty", action="store_true")
+    _add_policy_arguments(simulation)
+
+    analysis = subparsers.add_parser(
+        "analyze", help="compare workload classes across trace files or directories"
+    )
+    analysis.add_argument("inputs", nargs="+")
+    analysis.add_argument("--minimum-traces-per-class", type=int, default=30)
+    analysis.add_argument("--minimum-workload-classes", type=int, default=2)
+    _add_policy_arguments(analysis)
 
     generate = subparsers.add_parser("generate", help="create a deterministic synthetic trace")
     generate.add_argument("--agents", type=int, default=200)
@@ -124,6 +137,16 @@ def main(argv: list[str] | None = None) -> int:
                 file=sys.stderr,
             )
             return normalized_returncode(result.returncode)
+
+        if args.action == "analyze":
+            result = analyze_paths(
+                args.inputs,
+                _policy_from_args(args),
+                minimum_traces_per_class=args.minimum_traces_per_class,
+                minimum_workload_classes=args.minimum_workload_classes,
+            )
+            print(json.dumps(result, indent=2 if args.pretty else None, sort_keys=True))
+            return 0
 
         traces = load_trace(args.trace)
         if args.action == "validate":

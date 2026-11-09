@@ -69,3 +69,18 @@ afc simulate recordings/run-001.jsonl --pretty
 Resource samples are supporting evidence and are currently analyzed separately
 from allocation-based simulation. They are best-effort `/proc` observations and
 must not be presented as billing-grade counters.
+
+Analyze the full recording directory so every workload class is evaluated
+independently:
+
+```bash
+afc analyze recordings/ \
+  --minimum-traces-per-class 30 \
+  --minimum-workload-classes 2 \
+  --pretty
+```
+
+The collection gate checks sample counts and classification; it cannot determine
+whether the traces came from real agents. Preserve workload provenance in the
+experiment report and never relabel controlled or synthetic traces as live
+evidence. See [analysis.md](analysis.md) for report semantics.

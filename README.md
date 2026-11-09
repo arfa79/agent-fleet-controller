@@ -29,9 +29,10 @@ The repository currently provides:
 - explicit accounting for checkpoint cost, resume cost, and added latency;
 - a seeded synthetic trace generator for repeatable local experiments;
 - acceptance gates that prevent a resource-saving result from hiding excessive
-  latency.
+  latency;
 - an observe-only process recorder with content-free model, tool, and human-wait
-  markers and aggregate Linux resource samples.
+  markers and aggregate Linux resource samples;
+- workload-class analysis with separate gates and p50/p95/p99 wait statistics.
 
 It intentionally does **not** claim real infrastructure savings yet. Synthetic
 results are useful for testing the model and selecting thresholds, not for a
@@ -102,6 +103,26 @@ PYTHONPATH=src python3 -m agent_fleet_controller.cli simulate \
 The default hypothesis gate requires at least 20% CPU and memory resource-time
 savings and no more than 5% aggregate completion-time overhead.
 
+Analyze a directory of recordings without allowing a strong workload class to
+hide a weak one:
+
+```bash
+afc analyze recordings/ \
+  --minimum-traces-per-class 30 \
+  --minimum-workload-classes 2 \
+  --pretty
+```
+
+For a local functional exercise using deliberately scaled timings:
+
+```bash
+PYTHONPATH=src python3 scripts/run_controlled_pilot.py \
+  --output recordings/controlled-pilot
+```
+
+This controlled pilot does not run a real agent or sandbox and must not be used
+as evidence of production savings.
+
 ## What comes next
 
 1. Collect sanitized traces from at least two real agent workload classes.
@@ -114,6 +135,10 @@ savings and no more than 5% aggregate completion-time overhead.
 
 See [RFC 0001](docs/rfc/0001-agent-fleet-controller.md) and the
 [validation plan](docs/validation.md) for the architecture and stage gates.
+The [OpenShell integration guide](docs/integrations/openshell.md) describes the
+current observe-only boundary and the evidence required before lifecycle control.
+The [controlled local pilot](docs/results/stage-1-controlled-local.md) records
+the first 30-by-2 functional result and its limitations.
 
 ## Safety and project status
 
