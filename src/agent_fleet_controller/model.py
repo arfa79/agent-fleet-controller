@@ -39,10 +39,12 @@ class TraceEvent:
     agent_id: str
     kind: EventKind
     resources: Resources | None = None
+    workload_class: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
 class AgentTrace:
     agent_id: str
     resources: Resources
+    workload_class: str | None
     events: tuple[TraceEvent, ...]

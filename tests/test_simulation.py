@@ -54,3 +54,16 @@ def test_gate_requires_savings_and_bounded_latency() -> None:
 def test_policy_rejects_negative_values() -> None:
     with pytest.raises(ValueError, match="idle_after_seconds"):
         simulate((_single_trace(),), SimulationPolicy(idle_after_seconds=-1))
+
+
+def test_failed_wait_is_reclaimable_until_terminal_event() -> None:
+    trace = parse_jsonl(
+        [
+            '{"v":1,"ts":0,"agent_id":"a","kind":"agent_started","cpu_cores":1,"memory_gib":1}',
+            '{"v":1,"ts":10,"agent_id":"a","kind":"tool_wait_started"}',
+            '{"v":1,"ts":100,"agent_id":"a","kind":"agent_failed"}',
+        ]
+    )[0]
+    result = simulate_agent(trace, SimulationPolicy(idle_after_seconds=30))
+    assert result.reclaimed_idle_seconds == 60
+    assert result.suspensions == 1

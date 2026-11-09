@@ -9,6 +9,11 @@ Only sanitized lifecycle metadata may be used. Never add prompts, responses,
 tool arguments, credentials, source code, personal data, customer identifiers,
 or production traces to this repository.
 
+The recorder intentionally passes through rather than captures child stdout and
+stderr. Marker messages accept only an enumerated lifecycle event and cannot
+carry arbitrary text. Recording files are created with owner-only permissions
+and existing files are never overwritten.
+
 ## Execution policy
 
 Future live adapters must be observe-only by default, restrict actions to

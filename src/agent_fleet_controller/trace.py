@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import math
+import re
 from collections import defaultdict
 from pathlib import Path
 from typing import Iterable
@@ -19,6 +20,9 @@ from .model import (
 
 class TraceValidationError(ValueError):
     """Raised when a trace cannot be trusted by the simulator."""
+
+
+WORKLOAD_CLASS_PATTERN = re.compile(r"^[a-z0-9][a-z0-9_-]{0,63}$")
 
 
 def _finite_number(value: object, field: str, line_number: int) -> float:
@@ -43,7 +47,15 @@ def parse_jsonl(lines: Iterable[str]) -> tuple[AgentTrace, ...]:
         if not isinstance(raw, dict):
             raise TraceValidationError(f"line {line_number}: event must be a JSON object")
 
-        allowed = {"v", "ts", "agent_id", "kind", "cpu_cores", "memory_gib"}
+        allowed = {
+            "v",
+            "ts",
+            "agent_id",
+            "kind",
+            "cpu_cores",
+            "memory_gib",
+            "workload_class",
+        }
         unknown = sorted(set(raw) - allowed)
         if unknown:
             raise TraceValidationError(
@@ -70,6 +82,7 @@ def parse_jsonl(lines: Iterable[str]) -> tuple[AgentTrace, ...]:
             raise TraceValidationError(f"line {line_number}: unknown event kind") from exc
 
         resources = None
+        workload_class = None
         resource_fields_present = "cpu_cores" in raw or "memory_gib" in raw
         if kind is EventKind.AGENT_STARTED:
             if "cpu_cores" not in raw or "memory_gib" not in raw:
@@ -83,9 +96,21 @@ def parse_jsonl(lines: Iterable[str]) -> tuple[AgentTrace, ...]:
                     f"line {line_number}: resource values must be greater than zero"
                 )
             resources = Resources(cpu_cores=cpu, memory_gib=memory)
+            workload_class = raw.get("workload_class")
+            if workload_class is not None and (
+                not isinstance(workload_class, str)
+                or WORKLOAD_CLASS_PATTERN.fullmatch(workload_class) is None
+            ):
+                raise TraceValidationError(
+                    f"line {line_number}: workload_class must be a lowercase safe label"
+                )
         elif resource_fields_present:
             raise TraceValidationError(
                 f"line {line_number}: resources are only valid on agent_started"
+            )
+        elif "workload_class" in raw:
+            raise TraceValidationError(
+                f"line {line_number}: workload_class is only valid on agent_started"
             )
 
         grouped[agent_id].append(
@@ -95,6 +120,7 @@ def parse_jsonl(lines: Iterable[str]) -> tuple[AgentTrace, ...]:
                 agent_id=agent_id,
                 kind=kind,
                 resources=resources,
+                workload_class=workload_class,
             )
         )
 
@@ -136,15 +162,27 @@ def _validate_agent(agent_id: str, events: list[TraceEvent]) -> AgentTrace:
                     f"agent {agent_id}: {event.kind.value} has no matching start"
                 )
             active_wait = None
-        elif event.kind in TERMINAL_EVENTS and active_wait is not None:
-            raise TraceValidationError(f"agent {agent_id}: terminal event while waiting")
+        elif event.kind is EventKind.AGENT_COMPLETED and active_wait is not None:
+            raise TraceValidationError(
+                f"agent {agent_id}: completed with an unclosed wait"
+            )
+        elif event.kind in TERMINAL_EVENTS:
+            # A process may fail while blocked on an external dependency. The
+            # terminal event implicitly closes that wait without fabricating a
+            # successful wait-finished event.
+            active_wait = None
 
     if active_wait is not None:
         raise TraceValidationError(f"agent {agent_id}: unclosed wait")
 
     resources = events[0].resources
     assert resources is not None
-    return AgentTrace(agent_id=agent_id, resources=resources, events=tuple(events))
+    return AgentTrace(
+        agent_id=agent_id,
+        resources=resources,
+        workload_class=events[0].workload_class,
+        events=tuple(events),
+    )
 
 
 def load_trace(path: str | Path) -> tuple[AgentTrace, ...]:

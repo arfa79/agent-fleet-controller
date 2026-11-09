@@ -53,3 +53,19 @@ cat validation-results/synthetic-200-result.json
 The generated dataset uses a fixed seed. Its output verifies determinism and
 accounting only. It is not evidence that real agents exhibit the same wait-time
 distribution.
+
+## Stage-1 collection
+
+Use the observe-only recorder described in [recording.md](recording.md). Collect
+at least 30 completed tasks from each of two workload classes, while retaining
+failed traces in cost accounting. Validate every lifecycle trace before running
+the simulator:
+
+```bash
+afc validate recordings/run-001.jsonl
+afc simulate recordings/run-001.jsonl --pretty
+```
+
+Resource samples are supporting evidence and are currently analyzed separately
+from allocation-based simulation. They are best-effort `/proc` observations and
+must not be presented as billing-grade counters.

@@ -65,6 +65,12 @@ def simulate_agent(trace: AgentTrace, policy: SimulationPolicy) -> AgentResult:
             wait_started_at = None
             wait_kind = None
 
+    if wait_started_at is not None:
+        reclaimable = end - wait_started_at - policy.idle_after_seconds
+        if reclaimable > 0:
+            reclaimed += reclaimable
+            suspensions += 1
+
     overhead_active = suspensions * (policy.checkpoint_seconds + policy.resume_seconds)
     controlled_active = max(0.0, lifetime - reclaimed + overhead_active)
     controlled_completion = lifetime + suspensions * policy.resume_seconds
