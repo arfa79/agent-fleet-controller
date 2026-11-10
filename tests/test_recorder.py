@@ -112,3 +112,22 @@ def test_does_not_launch_command_when_output_setup_fails(tmp_path) -> None:
 
     assert not side_effect.exists()
     assert not trace_path.exists()
+
+
+def test_runs_command_in_explicit_working_directory(tmp_path) -> None:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    trace_path = tmp_path / "trace.jsonl"
+    metrics_path = tmp_path / "metrics.jsonl"
+
+    result = record_command(
+        [sys.executable, "-c", "from pathlib import Path; Path('result').touch()"],
+        trace_path=trace_path,
+        metrics_path=metrics_path,
+        cpu_cores=1,
+        memory_gib=1,
+        cwd=workspace,
+    )
+
+    assert result.returncode == 0
+    assert (workspace / "result").exists()

@@ -145,6 +145,7 @@ def record_command(
     memory_gib: float,
     workload_class: str | None = None,
     sample_interval: float = 1.0,
+    cwd: str | Path | None = None,
 ) -> RecordResult:
     """Run a command and record only lifecycle and aggregate /proc metadata."""
 
@@ -154,6 +155,9 @@ def record_command(
         raise ValueError("cpu_cores and memory_gib must be greater than zero")
     if sample_interval <= 0:
         raise ValueError("sample_interval must be greater than zero")
+    working_directory = Path(cwd) if cwd is not None else None
+    if working_directory is not None and not working_directory.is_dir():
+        raise ValueError("cwd must be an existing directory")
     if workload_class is not None:
         from .trace import WORKLOAD_CLASS_PATTERN
 
@@ -190,6 +194,7 @@ def record_command(
             child_environment["AFC_AGENT_ID"] = agent_id
             process = subprocess.Popen(
                 list(command),
+                cwd=working_directory,
                 env=child_environment,
                 start_new_session=True,
             )

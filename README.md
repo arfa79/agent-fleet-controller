@@ -36,7 +36,9 @@ The repository currently provides:
 - validated experiment manifests that pin provenance, runtime, baseline,
   evaluator, collection gates, and policy;
 - best-effort consumed CPU and memory summaries from recorder metrics; and
-- deterministic, observe-only `would_suspend`/`would_resume` decision logs.
+- deterministic, observe-only `would_suspend`/`would_resume` decision logs;
+- bounded, interleaved collection of two or more external agent workload
+  classes, with isolated per-run workspaces and fail-fast preflights.
 
 It intentionally does **not** claim real infrastructure savings yet. Synthetic
 results are useful for testing the model and selecting thresholds, not for a
@@ -143,6 +145,22 @@ afc experiment examples/experiment-manifest.json --pretty
 See [experiment manifests](docs/experiments.md) for the strict schema and
 evidence limitations.
 
+Collect external agent runs without putting commands or prompt content into
+AFC traces:
+
+```bash
+afc collect \
+  --spec examples/collection-spec.json \
+  --output recordings/real-agent-pilot \
+  --workspace-root /tmp/afc-real-agent-workspaces \
+  --runs-per-class 30
+```
+
+Replace the example commands with an explicitly authorized agent and sanitized
+task set. Collection alternates workload classes, bounds every command with a
+timeout, and stops on the first failed class preflight. See the
+[real-agent collection guide](docs/collection.md).
+
 For a local functional exercise using deliberately scaled timings:
 
 ```bash
@@ -172,6 +190,8 @@ the first 30-by-2 functional result and its limitations.
 The [OpenShell smoke result](docs/results/stage-1-openshell-smoke.md) records a
 real OpenShell v0.1.7 control-plane integration and the host-kernel blocker that
 prevented a sandbox benchmark.
+The [agent CLI preflight](docs/results/stage-1-agent-preflight.md) records why a
+30-by-2 real-agent collection could not honestly be completed on this host yet.
 
 ## Safety and project status
 

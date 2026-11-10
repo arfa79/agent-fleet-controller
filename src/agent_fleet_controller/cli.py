@@ -6,6 +6,12 @@ import sys
 from pathlib import Path
 
 from .analysis import analyze_paths
+from .collection import (
+    CollectionSpecError,
+    collect_workloads,
+    collection_result_payload,
+    load_collection_spec,
+)
 from .experiment import ManifestValidationError, run_experiment
 from .generator import generate_trace
 from .markers import MarkerError, emit
@@ -70,6 +76,16 @@ def build_parser() -> argparse.ArgumentParser:
     experiment.add_argument("manifest")
     experiment.add_argument("--pretty", action="store_true")
 
+    collection = subparsers.add_parser(
+        "collect", help="record bounded external agent commands from a strict spec"
+    )
+    collection.add_argument("--spec", required=True)
+    collection.add_argument("--output", required=True)
+    collection.add_argument("--workspace-root", required=True)
+    collection.add_argument("--runs-per-class", type=int, default=30)
+    collection.add_argument("--timeout-seconds", type=float, default=900.0)
+    collection.add_argument("--sample-interval", type=float, default=1.0)
+
     generate = subparsers.add_parser("generate", help="create a deterministic synthetic trace")
     generate.add_argument("--agents", type=int, default=200)
     generate.add_argument("--seed", type=int, default=20261108)
@@ -89,6 +105,7 @@ def build_parser() -> argparse.ArgumentParser:
         help="safe workload class such as coding-agent; never use a user or customer name",
     )
     record.add_argument("--sample-interval", type=float, default=1.0)
+    record.add_argument("--cwd", help="existing working directory for the child command")
     record.add_argument("command", nargs=argparse.REMAINDER)
 
     marker = subparsers.add_parser("mark", help="emit a content-free lifecycle marker")
@@ -136,6 +153,7 @@ def main(argv: list[str] | None = None) -> int:
                 memory_gib=args.memory_gib,
                 workload_class=args.workload_class,
                 sample_interval=args.sample_interval,
+                cwd=args.cwd,
             )
             print(
                 json.dumps(
@@ -168,6 +186,18 @@ def main(argv: list[str] | None = None) -> int:
             print(json.dumps(result, indent=2 if args.pretty else None, sort_keys=True))
             return 0
 
+        if args.action == "collect":
+            result = collect_workloads(
+                load_collection_spec(args.spec),
+                output=args.output,
+                workspace_root=args.workspace_root,
+                runs_per_class=args.runs_per_class,
+                timeout_seconds=args.timeout_seconds,
+                sample_interval=args.sample_interval,
+            )
+            print(json.dumps(collection_result_payload(result), sort_keys=True))
+            return 0 if result.status == "complete" else 3
+
         traces = load_trace(args.trace)
         if args.action == "validate":
             print(json.dumps({"agents": len(traces), "status": "valid", "trace": args.trace}))
@@ -182,6 +212,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     except (
         OSError,
+        CollectionSpecError,
         ManifestValidationError,
         MarkerError,
         MetricsValidationError,

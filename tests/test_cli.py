@@ -101,3 +101,75 @@ def test_experiment_cli_uses_example_manifest(capsys) -> None:
     assert returncode == 0
     report = json.loads(capsys.readouterr().out)
     assert report["experiment"]["experiment_id"] == "demo-v1"
+
+
+def test_collect_cli_returns_blocked_status(tmp_path, capsys) -> None:
+    spec = tmp_path / "spec.json"
+    spec.write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "classes": [
+                    {
+                        "workload_class": "coding-agent",
+                        "cpu_cores": 1,
+                        "memory_gib": 1,
+                        "command": [sys.executable, "-c", "raise SystemExit(9)"],
+                    },
+                    {
+                        "workload_class": "research-agent",
+                        "cpu_cores": 1,
+                        "memory_gib": 1,
+                        "command": [sys.executable, "-c", "pass"],
+                    },
+                ],
+            }
+        )
+    )
+
+    returncode = main(
+        [
+            "collect",
+            "--spec",
+            str(spec),
+            "--output",
+            str(tmp_path / "recordings"),
+            "--workspace-root",
+            str(tmp_path / "workspaces"),
+            "--sample-interval",
+            "0.01",
+        ]
+    )
+
+    assert returncode == 3
+    report = json.loads(capsys.readouterr().out)
+    assert report["status"] == "blocked_on_preflight"
+    assert report["commands_copied_to_output"] is False
+
+
+def test_record_cli_accepts_explicit_working_directory(tmp_path, capsys) -> None:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    trace_path = tmp_path / "trace.jsonl"
+
+    returncode = main(
+        [
+            "record",
+            "--output",
+            str(trace_path),
+            "--cpu-cores",
+            "1",
+            "--memory-gib",
+            "1",
+            "--cwd",
+            str(workspace),
+            "--",
+            sys.executable,
+            "-c",
+            "from pathlib import Path; Path('result').touch()",
+        ]
+    )
+
+    assert returncode == 0
+    assert (workspace / "result").exists()
+    assert json.loads(capsys.readouterr().err)["returncode"] == 0

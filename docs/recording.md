@@ -15,6 +15,7 @@ afc record \
   --memory-gib 4 \
   --workload-class coding-agent \
   --sample-interval 1 \
+  --cwd /path/to/disposable-workspace \
   -- your-agent-command
 ```
 
@@ -29,6 +30,10 @@ user, repository, project, or task names in this field.
 The metrics path defaults to the trace name with `.metrics.jsonl` replacing its
 suffix. Use `--metrics` to select another path. AFC creates both files with mode
 `0600` and refuses to overwrite either one.
+
+`--cwd` runs the child in an existing disposable workspace without putting that
+path into the lifecycle trace. It does not restrict the child's filesystem
+access; use the external agent or runtime's own sandbox policy for that.
 
 ## Lifecycle markers
 

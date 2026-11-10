@@ -1,0 +1,25 @@
+{
+  "classes": [
+    {
+      "command": [
+        "your-agent-command",
+        "--task-set",
+        "coding-v1"
+      ],
+      "cpu_cores": 2.0,
+      "memory_gib": 4.0,
+      "workload_class": "coding-agent"
+    },
+    {
+      "command": [
+        "your-agent-command",
+        "--task-set",
+        "research-v1"
+      ],
+      "cpu_cores": 2.0,
+      "memory_gib": 4.0,
+      "workload_class": "research-agent"
+    }
+  ],
+  "schema_version": 1
+}
