@@ -6,8 +6,11 @@ import sys
 from pathlib import Path
 
 from .analysis import analyze_paths
+from .experiment import ManifestValidationError, run_experiment
 from .generator import generate_trace
 from .markers import MarkerError, emit
+from .metrics import MetricsValidationError
+from .planning import plan
 from .recorder import normalized_returncode, record_command
 from .simulation import SimulationPolicy, simulate
 from .trace import TraceValidationError, load_trace
@@ -54,6 +57,18 @@ def build_parser() -> argparse.ArgumentParser:
     analysis.add_argument("--minimum-traces-per-class", type=int, default=30)
     analysis.add_argument("--minimum-workload-classes", type=int, default=2)
     _add_policy_arguments(analysis)
+
+    planning = subparsers.add_parser(
+        "plan", help="emit observe-only suspend/resume decisions without mutation"
+    )
+    planning.add_argument("trace")
+    _add_policy_arguments(planning)
+
+    experiment = subparsers.add_parser(
+        "experiment", help="run a reproducible analysis from a versioned manifest"
+    )
+    experiment.add_argument("manifest")
+    experiment.add_argument("--pretty", action="store_true")
 
     generate = subparsers.add_parser("generate", help="create a deterministic synthetic trace")
     generate.add_argument("--agents", type=int, default=200)
@@ -148,15 +163,31 @@ def main(argv: list[str] | None = None) -> int:
             print(json.dumps(result, indent=2 if args.pretty else None, sort_keys=True))
             return 0
 
+        if args.action == "experiment":
+            result = run_experiment(args.manifest)
+            print(json.dumps(result, indent=2 if args.pretty else None, sort_keys=True))
+            return 0
+
         traces = load_trace(args.trace)
         if args.action == "validate":
             print(json.dumps({"agents": len(traces), "status": "valid", "trace": args.trace}))
             return 0
 
-        result = simulate(traces, _policy_from_args(args))
+        result = (
+            plan(traces, _policy_from_args(args))
+            if args.action == "plan"
+            else simulate(traces, _policy_from_args(args))
+        )
         print(json.dumps(result, indent=2 if args.pretty else None, sort_keys=True))
         return 0
-    except (OSError, MarkerError, TraceValidationError, ValueError) as exc:
+    except (
+        OSError,
+        ManifestValidationError,
+        MarkerError,
+        MetricsValidationError,
+        TraceValidationError,
+        ValueError,
+    ) as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 2
 

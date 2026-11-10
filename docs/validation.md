@@ -67,8 +67,9 @@ afc simulate recordings/run-001.jsonl --pretty
 ```
 
 Resource samples are supporting evidence and are currently analyzed separately
-from allocation-based simulation. They are best-effort `/proc` observations and
-must not be presented as billing-grade counters.
+from allocation-based simulation. `afc analyze` validates and summarizes default
+sibling metrics files, but they remain best-effort `/proc` observations and must
+not be presented as billing-grade counters or remote-sandbox measurements.
 
 Analyze the full recording directory so every workload class is evaluated
 independently:
@@ -89,3 +90,8 @@ Wait markers are assertions that the managed sandbox is safely reclaimable.
 Exclude traces whose markers merely describe a blocked harness while sandbox
 work continues; treating those intervals as idle would invalidate both the
 savings model and a future suspension decision.
+
+Pin every publishable run in a versioned experiment manifest as described in
+[experiments.md](experiments.md). Review the dry-run `afc plan` output before
+considering a runtime adapter. A dry-run decision is evidence about policy
+behavior, not authorization to suspend a workload.

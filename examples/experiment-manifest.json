@@ -1,0 +1,52 @@
+{
+  "baseline": {
+    "kind": "always_on",
+    "native_policy_enabled": false,
+    "price_table_revision": "demo-v1"
+  },
+  "agent": {
+    "name": "synthetic-agent",
+    "version": "v1"
+  },
+  "collection": {
+    "inputs": [
+      "demo-trace.jsonl"
+    ],
+    "minimum_traces_per_class": 1,
+    "minimum_workload_classes": 1
+  },
+  "evaluator": {
+    "name": "trace-terminal-status",
+    "version": "v1"
+  },
+  "evidence_kind": "synthetic",
+  "experiment_id": "demo-v1",
+  "model": {
+    "model_id": "synthetic-model",
+    "provider": "none"
+  },
+  "policy": {
+    "checkpoint_seconds": 0.5,
+    "cpu_hourly_cost": 0.05,
+    "idle_after_seconds": 30.0,
+    "maximum_completion_overhead_percent": 5.0,
+    "memory_gib_hourly_cost": 0.006,
+    "minimum_resource_savings_percent": 20.0,
+    "resume_seconds": 1.5
+  },
+  "runtime": {
+    "driver": "none",
+    "name": "afc-simulator",
+    "version": "v0.4.0"
+  },
+  "schema_version": 1,
+  "tool_environment": {
+    "name": "none",
+    "revision": "v1"
+  },
+  "workload": {
+    "dataset_id": "demo-trace",
+    "real_agent_workload": false,
+    "revision": "v1"
+  }
+}

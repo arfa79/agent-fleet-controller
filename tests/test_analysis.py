@@ -97,7 +97,12 @@ def test_analyze_directory_excludes_metrics_files(tmp_path) -> None:
         )
         + "\n"
     )
-    metrics.write_text('{"cpu_seconds":1}\n')
+    metrics.write_text(
+        '{"v":1,"ts":0,"agent_id":"agent-1","cpu_seconds":0.1,'
+        '"rss_bytes":1073741824,"processes":1}\n'
+        '{"v":1,"ts":1,"agent_id":"agent-1","cpu_seconds":0.3,'
+        '"rss_bytes":1073741824,"processes":1}\n'
+    )
 
     report = analyze_paths(
         [tmp_path],
@@ -108,6 +113,11 @@ def test_analyze_directory_excludes_metrics_files(tmp_path) -> None:
 
     assert report["agents"] == 1
     assert report["trace_files"] == 1
+    assert report["metrics_files"] == 1
+    observed = report["overall"]["resource_observations"]
+    assert observed["agents_with_metrics"] == 1
+    assert observed["observed_cpu_seconds"] == pytest.approx(0.3)
+    assert observed["observed_memory_gib_seconds"] == pytest.approx(1.0)
 
 
 def test_rejects_duplicate_agent_ids_across_files(tmp_path) -> None:

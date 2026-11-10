@@ -4,6 +4,7 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Iterable, Sequence
 
+from .metrics import MetricsSample, load_metrics, summarize_samples
 from .model import AgentTrace, EventKind, WAIT_PAIRS
 from .simulation import SimulationPolicy, simulate
 from .trace import TraceValidationError, load_trace
@@ -123,18 +124,85 @@ def _simulation_summary(
     }
 
 
+def _resource_observation_summary(
+    traces: Iterable[AgentTrace],
+    observations: dict[str, tuple[MetricsSample, ...]],
+) -> dict[str, object]:
+    trace_list = list(traces)
+    summaries = []
+    for trace in trace_list:
+        samples = observations.get(trace.agent_id)
+        if samples is None:
+            continue
+        lifecycle_seconds = trace.events[-1].timestamp - trace.events[0].timestamp
+        summaries.append(summarize_samples(samples, lifecycle_seconds=lifecycle_seconds))
+
+    return {
+        "evidence_level": "best_effort_local_process_observation",
+        "agents_with_metrics": len(summaries),
+        "agents_missing_metrics": len(trace_list) - len(summaries),
+        "samples": sum(int(summary["samples"]) for summary in summaries),
+        "observed_cpu_seconds": sum(
+            float(summary["observed_cpu_seconds"]) for summary in summaries
+        ),
+        "observed_memory_gib_seconds": sum(
+            float(summary["observed_memory_gib_seconds"]) for summary in summaries
+        ),
+        "peak_rss_bytes": max(
+            (int(summary["peak_rss_bytes"]) for summary in summaries), default=0
+        ),
+        "peak_processes": max(
+            (int(summary["peak_processes"]) for summary in summaries), default=0
+        ),
+        "mean_lifecycle_coverage_percent": (
+            sum(float(summary["lifecycle_coverage_percent"]) for summary in summaries)
+            / len(summaries)
+            if summaries
+            else None
+        ),
+    }
+
+
+def load_resource_observations(
+    trace_files: Sequence[Path],
+) -> tuple[dict[str, tuple[MetricsSample, ...]], int]:
+    observations: dict[str, tuple[MetricsSample, ...]] = {}
+    metrics_files = 0
+    for trace_file in trace_files:
+        metrics_path = trace_file.with_suffix(".metrics.jsonl")
+        if not metrics_path.is_file():
+            continue
+        metrics_files += 1
+        trace_ids = {trace.agent_id for trace in load_trace(trace_file)}
+        loaded = load_metrics(metrics_path)
+        unexpected = sorted(set(loaded) - trace_ids)
+        if unexpected:
+            raise TraceValidationError(
+                f"metrics file {metrics_path} contains agent IDs not present in {trace_file}"
+            )
+        duplicate = sorted(set(loaded) & set(observations))
+        if duplicate:
+            raise TraceValidationError(
+                f"duplicate resource metrics for agent_id {duplicate[0]!r}"
+            )
+        observations.update(loaded)
+    return observations, metrics_files
+
+
 def analyze(
     traces: tuple[AgentTrace, ...],
     policy: SimulationPolicy,
     *,
     minimum_traces_per_class: int = 30,
     minimum_workload_classes: int = 2,
+    resource_observations: dict[str, tuple[MetricsSample, ...]] | None = None,
 ) -> dict[str, object]:
     if not traces:
         raise ValueError("at least one trace is required")
     if minimum_traces_per_class <= 0 or minimum_workload_classes <= 0:
         raise ValueError("collection minimums must be greater than zero")
 
+    observations = resource_observations or {}
     grouped: dict[str, list[AgentTrace]] = defaultdict(list)
     for trace in traces:
         grouped[trace.workload_class or "unclassified"].append(trace)
@@ -153,6 +221,9 @@ def analyze(
             "agents": len(class_traces),
             "simulation": simulation,
             "waits": _wait_distributions(class_traces),
+            "resource_observations": _resource_observation_summary(
+                class_traces, observations
+            ),
         }
 
     enough_classes = len(grouped) >= minimum_workload_classes
@@ -169,6 +240,9 @@ def analyze(
         "overall": {
             "simulation": _simulation_summary(traces, policy),
             "waits": _wait_distributions(traces),
+            "resource_observations": _resource_observation_summary(
+                traces, observations
+            ),
         },
         "collection_gate": {
             "minimum_traces_per_class": minimum_traces_per_class,
@@ -194,11 +268,14 @@ def analyze_paths(
     minimum_workload_classes: int = 2,
 ) -> dict[str, object]:
     traces, files = load_traces(inputs)
+    observations, metrics_files = load_resource_observations(files)
     report = analyze(
         traces,
         policy,
         minimum_traces_per_class=minimum_traces_per_class,
         minimum_workload_classes=minimum_workload_classes,
+        resource_observations=observations,
     )
     report["trace_files"] = len(files)
+    report["metrics_files"] = metrics_files
     return report

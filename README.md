@@ -32,7 +32,11 @@ The repository currently provides:
   latency;
 - an observe-only process recorder with content-free model, tool, and human-wait
   markers and aggregate Linux resource samples;
-- workload-class analysis with separate gates and p50/p95/p99 wait statistics.
+- workload-class analysis with separate gates and p50/p95/p99 wait statistics;
+- validated experiment manifests that pin provenance, runtime, baseline,
+  evaluator, collection gates, and policy;
+- best-effort consumed CPU and memory summaries from recorder metrics; and
+- deterministic, observe-only `would_suspend`/`would_resume` decision logs.
 
 It intentionally does **not** claim real infrastructure savings yet. Synthetic
 results are useful for testing the model and selecting thresholds, not for a
@@ -119,6 +123,26 @@ afc analyze recordings/ \
   --pretty
 ```
 
+When default sibling `*.metrics.jsonl` files exist, analysis validates and
+summarizes their observed CPU, memory, process-count, and lifecycle coverage.
+These local process observations remain supporting evidence, not proof that a
+remote sandbox released resources.
+
+Preview decisions without calling a sandbox runtime:
+
+```bash
+afc plan recordings/coding-run.jsonl --idle-after 30 --pretty
+```
+
+Run a reproducible experiment whose inputs and policy are pinned in one file:
+
+```bash
+afc experiment examples/experiment-manifest.json --pretty
+```
+
+See [experiment manifests](docs/experiments.md) for the strict schema and
+evidence limitations.
+
 For a local functional exercise using deliberately scaled timings:
 
 ```bash
@@ -132,9 +156,9 @@ as evidence of production savings.
 ## What comes next
 
 1. Collect sanitized traces from at least two real agent workload classes.
-2. Analyze wait distributions and compare modeled savings with native runtime
-   behavior.
-3. Add suspend/resume adapters behind a dry-run-by-default interface.
+2. Analyze wait distributions and consumed-resource observations, then compare
+   modeled savings with native runtime behavior.
+3. Validate dry-run decisions before adding any runtime adapter.
 4. Test OpenShell and Kubernetes Agent Sandbox integrations.
 5. Feed session and priority hints to an inference router.
 6. Run a controlled 50-200-agent benchmark and publish reproducible results.

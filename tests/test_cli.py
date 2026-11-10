@@ -72,3 +72,32 @@ def test_analyze_reports_collection_gate(tmp_path, capsys) -> None:
     report = json.loads(capsys.readouterr().out)
     assert report["collection_gate"]["pass"] is True
     assert report["trace_files"] == 1
+
+
+def test_plan_cli_is_observe_only(tmp_path, capsys) -> None:
+    trace_path = tmp_path / "trace.jsonl"
+    trace_path.write_text(
+        '{"v":1,"ts":0,"agent_id":"a","kind":"agent_started",'
+        '"cpu_cores":1,"memory_gib":1}\n'
+        '{"v":1,"ts":1,"agent_id":"a","kind":"model_wait_started"}\n'
+        '{"v":1,"ts":40,"agent_id":"a","kind":"model_wait_finished"}\n'
+        '{"v":1,"ts":41,"agent_id":"a","kind":"agent_completed"}\n'
+    )
+
+    returncode = main(["plan", str(trace_path), "--idle-after", "10"])
+
+    assert returncode == 0
+    report = json.loads(capsys.readouterr().out)
+    assert report["mutates_runtime"] is False
+    assert report["summary"]["would_suspend"] == 1
+
+
+def test_experiment_cli_uses_example_manifest(capsys) -> None:
+    from pathlib import Path
+
+    manifest = Path(__file__).parents[1] / "examples" / "experiment-manifest.json"
+    returncode = main(["experiment", str(manifest)])
+
+    assert returncode == 0
+    report = json.loads(capsys.readouterr().out)
+    assert report["experiment"]["experiment_id"] == "demo-v1"

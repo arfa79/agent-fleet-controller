@@ -1,10 +1,10 @@
-{"v":1,"ts":0,"agent_id":"code-agent-1","kind":"agent_started","cpu_cores":2,"memory_gib":4}
+{"v":1,"ts":0,"agent_id":"code-agent-1","kind":"agent_started","cpu_cores":2,"memory_gib":4,"workload_class":"demo-agent"}
 {"v":1,"ts":8,"agent_id":"code-agent-1","kind":"model_wait_started"}
 {"v":1,"ts":78,"agent_id":"code-agent-1","kind":"model_wait_finished"}
 {"v":1,"ts":88,"agent_id":"code-agent-1","kind":"tool_wait_started"}
 {"v":1,"ts":208,"agent_id":"code-agent-1","kind":"tool_wait_finished"}
 {"v":1,"ts":220,"agent_id":"code-agent-1","kind":"agent_completed"}
-{"v":1,"ts":15,"agent_id":"code-agent-2","kind":"agent_started","cpu_cores":1,"memory_gib":2}
+{"v":1,"ts":15,"agent_id":"code-agent-2","kind":"agent_started","cpu_cores":1,"memory_gib":2,"workload_class":"demo-agent"}
 {"v":1,"ts":25,"agent_id":"code-agent-2","kind":"model_wait_started"}
 {"v":1,"ts":40,"agent_id":"code-agent-2","kind":"model_wait_finished"}
 {"v":1,"ts":50,"agent_id":"code-agent-2","kind":"human_wait_started"}

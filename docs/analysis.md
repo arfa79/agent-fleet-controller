@@ -2,7 +2,9 @@
 
 `afc analyze` loads lifecycle traces from one or more files or directories,
 validates them, and evaluates each workload class independently. Files ending
-in `.metrics.jsonl` are resource samples and are excluded automatically.
+in `.metrics.jsonl` are excluded as lifecycle traces. A default sibling metrics
+file such as `run.metrics.jsonl` for `run.jsonl` is instead validated and
+included as supporting resource-observation evidence.
 
 ```bash
 afc analyze recordings/ --pretty
@@ -17,6 +19,8 @@ The report includes:
 - model, tool, human, and combined wait distributions;
 - p50, p95, p99, maximum, mean, count, and total wait duration;
 - collection sufficiency checks.
+- observed CPU seconds, memory GiB-seconds, peak RSS and processes, and sampling
+  coverage when sibling recorder metrics exist.
 
 The default collection gate requires at least two named workload classes and 30
 traces in every class. Unclassified traces fail the collection gate. Duplicate
@@ -30,3 +34,23 @@ Analysis remains trace simulation. It does not prove that a runtime can reclaim
 the modeled resources or achieve the configured checkpoint and resume latency.
 Validate those assumptions against a native-runtime baseline before making a
 production or commercial claim.
+
+Recorder CPU samples are cumulative counters for the process tree visible at
+each sample. Analysis sums positive counter deltas so a disappearing descendant
+does not subtract previously observed work. Memory GiB-seconds use trapezoidal
+integration between RSS samples. Short-lived descendants and activity outside
+the local harness can still be missed, so this is not billing-grade accounting
+and cannot measure a remote sandbox.
+
+## Observe-only planning
+
+`afc plan` converts validated historical waits into deterministic decisions:
+
+```bash
+afc plan recordings/run-001.jsonl --idle-after 30 --pretty
+```
+
+The output contains stable action IDs and `would_suspend`, `would_resume`, or
+`terminal_observed` entries. It never contacts or mutates a runtime. A future
+adapter must re-check runtime state and authorization rather than execute a
+historical plan directly.
