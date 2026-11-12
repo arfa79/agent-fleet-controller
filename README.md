@@ -35,10 +35,12 @@ The repository currently provides:
 - workload-class analysis with separate gates and p50/p95/p99 wait statistics;
 - validated experiment manifests that pin provenance, runtime, baseline,
   evaluator, collection gates, and policy;
-- best-effort consumed CPU and memory summaries from recorder metrics; and
+- best-effort consumed CPU and memory summaries from recorder metrics;
 - deterministic, observe-only `would_suspend`/`would_resume` decision logs;
 - bounded, interleaved collection of two or more external agent workload
-  classes, with isolated per-run workspaces and fail-fast preflights.
+  classes, with isolated per-run workspaces and fail-fast preflights; and
+- sync and async durable-supervisor helpers that emit waits only after a
+  runtime confirms sandbox release.
 
 It intentionally does **not** claim real infrastructure savings yet. Synthetic
 results are useful for testing the model and selecting thresholds, not for a
@@ -99,6 +101,12 @@ only when the tool runs outside the sandbox and the sandbox itself is idle.
 An agent that cannot import the SDK may invoke `afc mark model-wait-started`
 and `afc mark model-wait-finished` around the operation. Supported wait types
 are `model`, `tool`, and `human`.
+
+For a framework integration that checkpoints state and releases the sandbox
+before marking the external operation, see the
+[durable workflow integration](docs/integrations/durable-workflows.md). The
+recommended production foundation is a durable workflow engine with
+asynchronous activity completion; a normal in-process model call is not enough.
 
 The recorder passes through the child process's stdout and stderr and never
 reads them. It does not inspect command-line arguments, environment values,
