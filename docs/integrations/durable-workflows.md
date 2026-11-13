@@ -56,6 +56,48 @@ an AFC marker. These helpers must run in the durable supervisor, outside the
 managed sandbox. They do not checkpoint processes or release infrastructure on
 their own.
 
+## Local framework proof
+
+`DurableWorkflowRunner` provides typed adapter boundaries for a checkpoint
+store, sandbox runtime, and durable external-operation broker. It enforces this
+sequence:
+
+1. validate identifiers and timeout before side effects;
+2. create an opaque checkpoint;
+3. require literal release confirmation and independently verify that the
+   workflow has no sandbox allocation;
+4. start the content-free AFC wait marker;
+5. submit and retrieve the external operation by a stable, idempotency-capable
+   operation ID; and
+6. finish the marker and restore on either the success or error path.
+
+The package includes in-memory adapters for local integration proofs. They
+demonstrate that no sandbox allocation exists during the wait, duplicate
+callbacks do not replace the first result, and provider failures or timeouts
+restore the workflow on an explicit error path. They are test fakes, not
+durable storage or a production runtime.
+
+```python
+from agent_fleet_controller.workflow import DurableWorkflowRunner
+
+runner = DurableWorkflowRunner(
+    checkpoints=checkpoint_adapter,
+    runtime=sandbox_runtime,
+    broker=operation_broker,
+)
+result = await runner.run(
+    "model",
+    workflow_id="workflow-42",
+    operation_id="model-request-87",
+    request=request,
+    timeout_seconds=120,
+)
+```
+
+The runner is deliberately dependency-free and does not claim crash-safe
+workflow replay. A Temporal adapter or equivalent durable engine is still
+required to survive a supervisor crash between these steps.
+
 When `afc record` wraps that supervisor, its `/proc` metrics describe the
 supervisor process tree, not a released remote sandbox. Use the sandbox
 runtime's allocation and lifecycle evidence to prove real resource release;

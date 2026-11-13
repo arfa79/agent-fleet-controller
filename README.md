@@ -40,7 +40,9 @@ The repository currently provides:
 - bounded, interleaved collection of two or more external agent workload
   classes, with isolated per-run workspaces and fail-fast preflights; and
 - sync and async durable-supervisor helpers that emit waits only after a
-  runtime confirms sandbox release.
+  runtime confirms sandbox release; and
+- a dependency-free durable-workflow adapter contract with local checkpoint,
+  sandbox-allocation, callback-idempotency, timeout, and error-path proofs.
 
 It intentionally does **not** claim real infrastructure savings yet. Synthetic
 results are useful for testing the model and selecting thresholds, not for a
