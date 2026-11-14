@@ -44,7 +44,10 @@ The repository currently provides:
 - a dependency-free durable-workflow adapter contract with local checkpoint,
   sandbox-allocation, callback-idempotency, timeout, and error-path proofs; and
 - an optional Temporal workflow bridge with durable callback signals,
-  replay-safe orchestration, bounded activities, and worker-restart tests.
+  replay-safe orchestration, bounded activities, and worker-restart tests; and
+- an OpenShell runtime adapter that uses native stop/start, verifies the exact
+  sandbox identity and `Stopped` phase, and restores durable agent state before
+  declaring the new runtime generation usable.
 
 It intentionally does **not** claim real infrastructure savings yet. Synthetic
 results are useful for testing the model and selecting thresholds, not for a
@@ -200,14 +203,15 @@ as evidence of production savings.
 2. Analyze wait distributions and consumed-resource observations, then compare
    modeled savings with native runtime behavior.
 3. Validate dry-run decisions before adding any runtime adapter.
-4. Test OpenShell and Kubernetes Agent Sandbox integrations.
+4. Validate the OpenShell stop/start adapter on a compatible disposable host,
+   including driver-level allocation disappearance and recreation.
 5. Feed session and priority hints to an inference router.
 6. Run a controlled 50-200-agent benchmark and publish reproducible results.
 
 See [RFC 0001](docs/rfc/0001-agent-fleet-controller.md) and the
 [validation plan](docs/validation.md) for the architecture and stage gates.
 The [OpenShell integration guide](docs/integrations/openshell.md) describes the
-current observe-only boundary and the evidence required before lifecycle control.
+opt-in lifecycle adapter and the remaining evidence required before production use.
 The [controlled local pilot](docs/results/stage-1-controlled-local.md) records
 the first 30-by-2 functional result and its limitations.
 The [OpenShell smoke result](docs/results/stage-1-openshell-smoke.md) records a
