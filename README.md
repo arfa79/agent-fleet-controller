@@ -38,11 +38,13 @@ The repository currently provides:
 - best-effort consumed CPU and memory summaries from recorder metrics;
 - deterministic, observe-only `would_suspend`/`would_resume` decision logs;
 - bounded, interleaved collection of two or more external agent workload
-  classes, with isolated per-run workspaces and fail-fast preflights; and
+  classes, with isolated per-run workspaces and fail-fast preflights;
 - sync and async durable-supervisor helpers that emit waits only after a
-  runtime confirms sandbox release; and
+  runtime confirms sandbox release;
 - a dependency-free durable-workflow adapter contract with local checkpoint,
-  sandbox-allocation, callback-idempotency, timeout, and error-path proofs.
+  sandbox-allocation, callback-idempotency, timeout, and error-path proofs; and
+- an optional Temporal workflow bridge with durable callback signals,
+  replay-safe orchestration, bounded activities, and worker-restart tests.
 
 It intentionally does **not** claim real infrastructure savings yet. Synthetic
 results are useful for testing the model and selecting thresholds, not for a
@@ -109,6 +111,17 @@ before marking the external operation, see the
 [durable workflow integration](docs/integrations/durable-workflows.md). The
 recommended production foundation is a durable workflow engine with
 asynchronous activity completion; a normal in-process model call is not enough.
+
+Install the optional Temporal bridge with:
+
+```bash
+python3 -m pip install 'agent-fleet-controller[temporal]'
+```
+
+The bridge is intentionally not imported by the base package, so AFC remains
+dependency-free unless this integration is selected. See the
+[Temporal adapter guide](docs/integrations/durable-workflows.md#temporal-adapter)
+for worker registration, callback signaling, replay tests, and security limits.
 
 The recorder passes through the child process's stdout and stderr and never
 reads them. It does not inspect command-line arguments, environment values,

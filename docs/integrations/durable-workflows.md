@@ -98,6 +98,89 @@ The runner is deliberately dependency-free and does not claim crash-safe
 workflow replay. A Temporal adapter or equivalent durable engine is still
 required to survive a supervisor crash between these steps.
 
+## Temporal adapter
+
+The optional `agent_fleet_controller.temporal` module turns the local contract
+into a replay-safe Temporal workflow. Install the pinned integration dependency
+without changing AFC's dependency-free base package:
+
+```bash
+python3 -m pip install -e '.[temporal]'
+```
+
+Register `TemporalReclaimableWait` and the bound activity methods on a worker:
+
+```python
+from temporalio.worker import Worker
+
+from agent_fleet_controller.temporal import (
+    TemporalActivities,
+    TemporalReclaimableWait,
+)
+
+activities = TemporalActivities(
+    checkpoints=checkpoint_store,
+    runtime=sandbox_runtime,
+    broker=operation_broker,
+    marker_emit=idempotent_marker_sink.emit,
+)
+
+worker = Worker(
+    temporal_client,
+    task_queue="afc-reclaimable-waits",
+    workflows=[TemporalReclaimableWait],
+    activities=activities.activities,
+)
+```
+
+`marker_emit` receives `(marker_id, event_kind)`. It must durably deduplicate
+the marker ID before forwarding the event because Temporal activities provide
+at-least-once, not exactly-once, execution. Checkpoint references and requests
+must be serializable by the configured Temporal data converter.
+
+After authenticating and validating an external provider callback, signal the
+workflow by its stable Temporal workflow ID:
+
+```python
+from agent_fleet_controller.temporal import (
+    TemporalCompletion,
+    TemporalReclaimableWait,
+)
+
+handle = temporal_client.get_workflow_handle("workflow-42")
+await handle.signal(
+    TemporalReclaimableWait.complete,
+    TemporalCompletion(result=sanitized_result),
+)
+```
+
+Only the first completion signal is accepted, so redelivery cannot replace an
+earlier result. The workflow restores on success, provider error, or timeout.
+Its history retains the callback while workers are unavailable; a replacement
+worker replays the history and continues the same workflow.
+
+Temporal history is a separate data boundary from AFC's content-free trace.
+Requests, results, checkpoint references, and error details can be stored in
+history. Production deployments must use an approved payload codec/encryption
+path, restricted namespace access, short sanitized errors, and retention that
+matches their data policy. Do not place secrets in workflow IDs, operation IDs,
+search attributes, or logs.
+
+The normal test suite validates the adapter contract and confirms that the
+workflow loads in Temporal's deterministic sandbox. The integration tests start
+Temporal's ephemeral test server and prove worker restart, durable callback
+delivery, duplicate callback handling, timeout, and restoration:
+
+```bash
+AFC_TEMPORAL_INTEGRATION=1 PYTHONPATH=src \
+  python3 -m pytest tests/test_temporal.py -v
+```
+
+The first integration run may download Temporal's official test-server binary.
+Set `AFC_TEMPORAL_ADDRESS` to use an already running development server instead.
+These tests prove orchestration durability only. They do not prove that a real
+OpenShell or Kubernetes allocation was deleted or that resource cost fell.
+
 When `afc record` wraps that supervisor, its `/proc` metrics describe the
 supervisor process tree, not a released remote sandbox. Use the sandbox
 runtime's allocation and lifecycle evidence to prove real resource release;
